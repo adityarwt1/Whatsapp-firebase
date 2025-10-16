@@ -18,33 +18,27 @@ interface ChatViewProps {
 }
 
 interface Message {
-  timestamp: string;
-  text: string;
+  message: string;
+  sendAt: number;
   uid: string;
 }
 
 export function ChatView({ chat }: ChatViewProps) {
   const [currentUserUid, setCurrentUserUid] = useState<string | null>(null);
   const [messages, setMessages] = useState<Message[]>([]);
+
   const eventSourceRef = useRef<EventSource | null>(null);
   const messagesEndRef = useRef<HTMLDivElement | null>(null);
   const scrollAreaRef = useRef<HTMLDivElement | null>(null);
   const [message, setMessage] = useState<string>("");
   const [isSending, setIsSending] = useState<boolean>(false);
   const [isAtBottom, setIsAtBottom] = useState<boolean>(true);
-  const prevMessagesLengthRef = useRef<number>(0);
 
-  // Smart auto-scroll - only when user is at bottom or sends message
+  // Auto-scroll to bottom when new messages arrive and user is at bottom
   useEffect(() => {
-    // Only scroll if new messages were added AND user is at bottom
-    if (
-      messages.length > prevMessagesLengthRef.current &&
-      isAtBottom &&
-      messagesEndRef.current
-    ) {
+    if (isAtBottom && messagesEndRef.current) {
       messagesEndRef.current.scrollIntoView({ behavior: "smooth" });
     }
-    prevMessagesLengthRef.current = messages.length;
   }, [messages, isAtBottom]);
 
   // Track if user is at bottom of chat
@@ -52,33 +46,41 @@ export function ChatView({ chat }: ChatViewProps) {
     if (!scrollAreaRef.current) return;
 
     const { scrollTop, scrollHeight, clientHeight } = scrollAreaRef.current;
-    const threshold = 100; // pixels from bottom to consider "at bottom"
+    const threshold = 100;
     const distanceFromBottom = scrollHeight - scrollTop - clientHeight;
 
     setIsAtBottom(distanceFromBottom < threshold);
   };
 
-  // Get current user UID from localStorage
+  // Get current user UID
   useEffect(() => {
     if (typeof window !== "undefined") {
       const uid = localStorage.getItem("uid");
       setCurrentUserUid(uid);
+      console.log("Current user UID:", uid); // Debug log
     }
   }, []);
 
-  // Extract firstKey from chat
-  const firstKey = chat ? Object.keys(chat)[0] : undefined;
-
-  // Setup EventSource for real-time updates
+  // Setup EventSource for real-time messages
   useEffect(() => {
-    if (!currentUserUid || !firstKey) return;
+    if (!currentUserUid || !chat?.chatId) {
+      console.log("Missing requirements:", {
+        currentUserUid,
+        chatId: chat?.chatId,
+      });
+      setMessages([]);
+      return;
+    }
 
+    // Close previous connection
     if (eventSourceRef.current) {
+      console.log("Closing previous EventSource connection");
       eventSourceRef.current.close();
     }
 
+    console.log("Setting up EventSource for chat:", chat.chatId);
     const eventSource = new EventSource(
-      `/api/v1/getCurrentChat?parentPathuid=${currentUserUid}&childPathuid=${firstKey}`
+      `/api/v1/getCurrentChat?chatid=${chat.chatId}`
     );
     eventSourceRef.current = eventSource;
 
@@ -86,94 +88,61 @@ export function ChatView({ chat }: ChatViewProps) {
       try {
         const parsedData = JSON.parse(event.data);
         console.log("Received data:", parsedData);
+        console.log("Type of parsedData:", typeof parsedData);
+        console.log("Is Array:", Array.isArray(parsedData));
 
-        if (parsedData?.definedChat) {
-          const extractedMessages: Message[] = [];
-
-          parsedData.definedChat.forEach((userObj: any) => {
-            const uid = Object.keys(userObj)[0];
-            const messagesArray = userObj[uid];
-
-            messagesArray.forEach((text: string) => {
-              extractedMessages.push({
-                timestamp: Date.now().toString(),
-                text: text,
-                uid: uid,
-              });
-            });
-          });
-
-          setMessages((prevMessages) => {
-            const allMessages = [...prevMessages, ...extractedMessages];
-
-            const uniqueMessages = allMessages.filter(
-              (msg, index, self) =>
-                index ===
-                self.findIndex(
-                  (m) =>
-                    m.text === msg.text &&
-                    m.uid === msg.uid &&
-                    m.timestamp === msg.timestamp
-                )
-            );
-
-            return uniqueMessages.sort(
-              (a, b) => parseInt(a.timestamp) - parseInt(b.timestamp)
-            );
-          });
+        // Check if parsedData is directly an array (based on your console log)
+        if (Array.isArray(parsedData)) {
+          console.log("Processing array directly");
+          const sortedMessages = parsedData.sort(
+            (a: Message, b: Message) => a.sendAt - b.sendAt
+          );
+          console.log("Setting messages:", sortedMessages);
+          setMessages(sortedMessages);
+        }
+        // Check if it has definedChat property
+        else if (
+          parsedData?.definedChat &&
+          Array.isArray(parsedData.definedChat)
+        ) {
+          console.log("Processing definedChat array");
+          const sortedMessages = parsedData.definedChat.sort(
+            (a: Message, b: Message) => a.sendAt - b.sendAt
+          );
+          console.log("Setting messages:", sortedMessages);
+          setMessages(sortedMessages);
+        } else {
+          console.log("Data structure not recognized:", parsedData);
         }
       } catch (error) {
-        console.log("Error parsing SSE data:", (error as Error).message);
+        console.error("Error parsing SSE data:", error);
       }
     };
 
     eventSource.onerror = (error) => {
-      console.log("Error fetching current chat:", error);
+      console.error("EventSource error:", error);
       eventSource.close();
+    };
+
+    eventSource.onopen = () => {
+      console.log("EventSource connection opened");
     };
 
     return () => {
+      console.log("Cleaning up EventSource");
       eventSource.close();
     };
-  }, [firstKey, currentUserUid]);
+  }, [chat?.chatId, currentUserUid]);
 
-  // Extract and sort messages from initial chat prop
+  // Debug: Log messages state changes
   useEffect(() => {
-    if (!chat) return;
-
-    const extractedMessages: Message[] = [];
-
-    Object.keys(chat).forEach((key) => {
-      if (
-        typeof chat[key] === "object" &&
-        key !== "email" &&
-        key !== "fullName" &&
-        key !== "photoURL" &&
-        key !== "lastmessage" &&
-        key !== "unseen"
-      ) {
-        const userMessages = chat[key];
-
-        Object.keys(userMessages).forEach((timestamp) => {
-          extractedMessages.push({
-            timestamp,
-            text: userMessages[timestamp],
-            uid: key.trim(),
-          });
-        });
-      }
-    });
-
-    const sortedMessages = extractedMessages.sort(
-      (a, b) => parseInt(a.timestamp) - parseInt(b.timestamp)
-    );
-
-    setMessages(sortedMessages);
-  }, [chat]);
+    console.log("Messages state updated:", messages);
+    console.log("Messages length:", messages.length);
+  }, [messages]);
 
   // Format timestamp to readable time
-  const formatTime = (timestamp: string) => {
-    const date = new Date(parseInt(timestamp));
+  const formatTime = (timestamp: number) => {
+    const date = new Date(timestamp);
     const hours = date.getHours();
     const minutes = date.getMinutes();
     return `${hours.toString().padStart(2, "0")}:${minutes
@@ -182,8 +151,8 @@ export function ChatView({ chat }: ChatViewProps) {
   };
 
   // Format date for date chip
-  const formatDate = (timestamp: string) => {
-    const date = new Date(parseInt(timestamp));
+  const formatDate = (timestamp: number) => {
+    const date = new Date(timestamp);
     const today = new Date();
     const yesterday = new Date(today);
     yesterday.setDate(yesterday.getDate() - 1);
@@ -202,7 +171,7 @@ export function ChatView({ chat }: ChatViewProps) {
     const grouped: { [key: string]: Message[] } = {};
 
     messages.forEach((msg) => {
-      const dateKey = formatDate(msg.timestamp);
+      const dateKey = formatDate(msg.sendAt);
       if (!grouped[dateKey]) {
         grouped[dateKey] = [];
       }
@@ -214,50 +183,48 @@ export function ChatView({ chat }: ChatViewProps) {
 
   const groupedMessages = groupMessagesByDate();
 
-  // Optimistic message sending - WhatsApp style
+  // Send message with optimistic UI update
   const handleSendMessage = async () => {
-    if (!message.trim() || !currentUserUid || !firstKey) return;
+    if (!message.trim() || !currentUserUid || !chat?.chatId) return;
 
     const messageToSend = message.trim();
     const optimisticMessage: Message = {
-      text: messageToSend,
-      timestamp: String(Date.now()),
+      message: messageToSend,
+      sendAt: Date.now(),
       uid: currentUserUid,
     };
 
     // Force scroll to bottom when sending
     setIsAtBottom(true);
 
-    // Immediately add message to UI (optimistic update)
+    // Optimistic UI update
     setMessages((prev) => [...prev, optimisticMessage]);
 
-    // Clear input immediately for better UX
+    // Clear input immediately
     setMessage("");
     setIsSending(true);
 
     try {
-      // Send to backend in background
       const response = await fetch("/api/v1/sendMessage", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
         },
         body: JSON.stringify({
+          chatId: chat.chatId,
           message: messageToSend,
-          parentPath: currentUserUid,
-          childPath: firstKey,
-          currentUid: currentUserUid,
+          uid: currentUserUid,
         }),
       });
 
       if (!response.ok) {
-        // If API fails, remove the optimistic message
+        // Remove optimistic message on failure
         setMessages((prev) =>
           prev.filter(
             (msg) =>
               !(
-                msg.text === optimisticMessage.text &&
-                msg.timestamp === optimisticMessage.timestamp
+                msg.message === optimisticMessage.message &&
+                msg.sendAt === optimisticMessage.sendAt
               )
           )
         );
@@ -269,12 +236,12 @@ export function ChatView({ chat }: ChatViewProps) {
         prev.filter(
           (msg) =>
             !(
-              msg.text === optimisticMessage.text &&
-              msg.timestamp === optimisticMessage.timestamp
+              msg.message === optimisticMessage.message &&
+              msg.sendAt === optimisticMessage.sendAt
             )
         )
       );
-      console.log((error as Error).message);
+      console.error("Send message error:", error);
     } finally {
       setIsSending(false);
     }
@@ -288,6 +255,13 @@ export function ChatView({ chat }: ChatViewProps) {
     }
   };
 
+  console.log("Rendering with:", {
+    chatId: chat?.chatId,
+    currentUserUid,
+    messagesCount: messages.length,
+    groupedMessagesKeys: Object.keys(groupedMessages),
+  });
+
   return (
     <div className="flex h-screen flex-1 flex-col bg-card">
       {/* Header */}
@@ -296,7 +270,7 @@ export function ChatView({ chat }: ChatViewProps) {
           <div className="min-w-0 flex items-center">
             <Image
               src={chat?.photoURL || "/backup.png"}
-              alt="No dp"
+              alt="Profile"
               width={40}
               height={40}
               className="rounded-full"
@@ -319,16 +293,25 @@ export function ChatView({ chat }: ChatViewProps) {
 
       {/* Messages area */}
       <main
+        ref={scrollAreaRef}
+        onScroll={handleScroll}
         className="relative flex-1 overflow-y-auto p-6"
         style={{
           backgroundImage:
-            "linear-gradient(rgba(0,0,0,0.35), rgba(0,0,0,0.35)), url('/images/whatsapp-chat-bg.png')",
+            "linear-gradient(rgba(0,0,0,0.8), rgba(0,0,0,0.8)), url('/images/whatsapp-chat-bg.png')",
           backgroundRepeat: "repeat",
           backgroundSize: "600px",
           backgroundPosition: "center",
         }}
         aria-label="Conversation"
       >
+        {/* Debug info (remove after fixing) */}
+        {messages.length === 0 && (
+          <div className="text-center text-muted-foreground text-sm">
+            No messages yet. Messages count: {messages.length}
+          </div>
+        )}
+
         {/* Render messages grouped by date */}
         {Object.keys(groupedMessages).map((date, index) => (
           <div key={index}>
@@ -338,8 +321,8 @@ export function ChatView({ chat }: ChatViewProps) {
             </div>
 
             {/* Messages for this date */}
-            {groupedMessages[date].map((message, msgIndex) => {
-              const isCurrentUser = message.uid === currentUserUid;
+            {groupedMessages[date].map((msg, msgIndex) => {
+              const isCurrentUser = msg.uid === currentUserUid;
 
               return (
                 <div
@@ -355,9 +338,9 @@ export function ChatView({ chat }: ChatViewProps) {
                         : "bg-secondary text-foreground"
                     }`}
                   >
-                    {message.text}
+                    {msg.message}
                     <span className="ml-2 align-baseline text-[10px] opacity-80">
-                      {formatTime(message.timestamp)}
+                      {formatTime(msg.sendAt)}
                     </span>
                   </div>
                 </div>
