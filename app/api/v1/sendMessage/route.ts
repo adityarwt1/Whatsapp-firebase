@@ -1,32 +1,32 @@
 import { database } from "@/lib/firebase";
-import { ref, update } from "firebase/database";
+import { get, push, ref, set } from "firebase/database";
 import { NextRequest, NextResponse } from "next/server";
 
 export async function POST(req: NextRequest) {
   try {
-    const { message, parentPath, childPath, currentUid } = await req.json();
+    const { chatId, message, uid } = await req.json();
 
-    if (!message || !parentPath || !childPath) {
+    //validating id
+    if (!chatId || !message || !uid) {
       return NextResponse.json({ error: "Bad request" }, { status: 400 });
     }
 
-    const dbref = ref(
-      database,
-      // `/chats/$${parentPath}/${childPath}/${currentUid}`
-      `/chats/${parentPath}/${childPath}/${currentUid}`
-    );
+    //chat ref and save
+    const chatRef = ref(database, `/messages/${chatId}`);
 
-    const curretnTimeSpan = new Date().getTime();
-    await update(dbref, {
-      [curretnTimeSpan]: message,
+    const messageRef = push(chatRef);
+
+    await set(messageRef, {
+      message,
+      sendAt: new Date().getTime(),
+      uid,
     });
-
-    return NextResponse.json({ success: true }, { status: 200 });
+    return NextResponse.json({ sent: true }, { status: 200 });
   } catch (error) {
-    console.log(error as Error);
+    console.log((error as Error).message);
     return NextResponse.json(
       { error: (error as Error).message },
-      { status: 500 }
+      { status: 200 }
     );
   }
 }
