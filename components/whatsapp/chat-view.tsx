@@ -9,6 +9,7 @@ import {
   Plus,
   Send,
   Loader,
+  MessageCircle,
 } from "lucide-react";
 import Image from "next/image";
 import { useEffect, useState, useRef } from "react";
@@ -57,28 +58,21 @@ export function ChatView({ chat }: ChatViewProps) {
     if (typeof window !== "undefined") {
       const uid = localStorage.getItem("uid");
       setCurrentUserUid(uid);
-      console.log("Current user UID:", uid); // Debug log
     }
   }, []);
 
   // Setup EventSource for real-time messages
   useEffect(() => {
     if (!currentUserUid || !chat?.chatId) {
-      console.log("Missing requirements:", {
-        currentUserUid,
-        chatId: chat?.chatId,
-      });
       setMessages([]);
       return;
     }
 
     // Close previous connection
     if (eventSourceRef.current) {
-      console.log("Closing previous EventSource connection");
       eventSourceRef.current.close();
     }
 
-    console.log("Setting up EventSource for chat:", chat.chatId);
     const eventSource = new EventSource(
       `/api/v1/getCurrentChat?chatid=${chat.chatId}`
     );
@@ -87,32 +81,20 @@ export function ChatView({ chat }: ChatViewProps) {
     eventSource.onmessage = (event) => {
       try {
         const parsedData = JSON.parse(event.data);
-        console.log("Received data:", parsedData);
-        console.log("Type of parsedData:", typeof parsedData);
-        console.log("Is Array:", Array.isArray(parsedData));
 
-        // Check if parsedData is directly an array (based on your console log)
         if (Array.isArray(parsedData)) {
-          console.log("Processing array directly");
           const sortedMessages = parsedData.sort(
             (a: Message, b: Message) => a.sendAt - b.sendAt
           );
-          console.log("Setting messages:", sortedMessages);
           setMessages(sortedMessages);
-        }
-        // Check if it has definedChat property
-        else if (
+        } else if (
           parsedData?.definedChat &&
           Array.isArray(parsedData.definedChat)
         ) {
-          console.log("Processing definedChat array");
           const sortedMessages = parsedData.definedChat.sort(
             (a: Message, b: Message) => a.sendAt - b.sendAt
           );
-          console.log("Setting messages:", sortedMessages);
           setMessages(sortedMessages);
-        } else {
-          console.log("Data structure not recognized:", parsedData);
         }
       } catch (error) {
         console.error("Error parsing SSE data:", error);
@@ -124,21 +106,10 @@ export function ChatView({ chat }: ChatViewProps) {
       eventSource.close();
     };
 
-    eventSource.onopen = () => {
-      console.log("EventSource connection opened");
-    };
-
     return () => {
-      console.log("Cleaning up EventSource");
       eventSource.close();
     };
   }, [chat?.chatId, currentUserUid]);
-
-  // Debug: Log messages state changes
-  useEffect(() => {
-    console.log("Messages state updated:", messages);
-    console.log("Messages length:", messages.length);
-  }, [messages]);
 
   // Format timestamp to readable time
   const formatTime = (timestamp: number) => {
@@ -194,13 +165,8 @@ export function ChatView({ chat }: ChatViewProps) {
       uid: currentUserUid,
     };
 
-    // Force scroll to bottom when sending
     setIsAtBottom(true);
-
-    // Optimistic UI update
     setMessages((prev) => [...prev, optimisticMessage]);
-
-    // Clear input immediately
     setMessage("");
     setIsSending(true);
 
@@ -218,7 +184,6 @@ export function ChatView({ chat }: ChatViewProps) {
       });
 
       if (!response.ok) {
-        // Remove optimistic message on failure
         setMessages((prev) =>
           prev.filter(
             (msg) =>
@@ -231,7 +196,6 @@ export function ChatView({ chat }: ChatViewProps) {
         console.error("Failed to send message");
       }
     } catch (error) {
-      // Rollback on error
       setMessages((prev) =>
         prev.filter(
           (msg) =>
@@ -255,12 +219,70 @@ export function ChatView({ chat }: ChatViewProps) {
     }
   };
 
-  console.log("Rendering with:", {
-    chatId: chat?.chatId,
-    currentUserUid,
-    messagesCount: messages.length,
-    groupedMessagesKeys: Object.keys(groupedMessages),
-  });
+  // Show empty state when no chat is selected
+  if (!chat) {
+    return (
+      <div className="flex h-screen flex-1 flex-col items-center justify-center bg-card">
+        <div className="flex flex-col items-center justify-center max-w-md text-center px-6">
+          <div className="mb-6 rounded-full bg-primary/10 p-8">
+            <MessageCircle className="h-20 w-20 text-primary" />
+          </div>
+
+          <h1 className="text-3xl font-semibold mb-3">WhatsApp Clone</h1>
+
+          <p className="text-muted-foreground mb-6 text-base">
+            Select a conversation from the sidebar to start chatting
+          </p>
+
+          <div className="flex flex-col items-center gap-3 text-sm text-muted-foreground">
+            <p>Made with by Aditya Rawat</p>
+
+            <div className="flex gap-4 items-center">
+              <a
+                href="https://github.com/adityarwt1"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="flex items-center gap-2 hover:text-primary transition-colors"
+              >
+                <svg
+                  className="h-5 w-5"
+                  fill="currentColor"
+                  viewBox="0 0 24 24"
+                  aria-hidden="true"
+                >
+                  <path
+                    fillRule="evenodd"
+                    d="M12 2C6.477 2 2 6.484 2 12.017c0 4.425 2.865 8.18 6.839 9.504.5.092.682-.217.682-.483 0-.237-.008-.868-.013-1.703-2.782.605-3.369-1.343-3.369-1.343-.454-1.158-1.11-1.466-1.11-1.466-.908-.62.069-.608.069-.608 1.003.07 1.531 1.032 1.531 1.032.892 1.53 2.341 1.088 2.91.832.092-.647.35-1.088.636-1.338-2.22-.253-4.555-1.113-4.555-4.951 0-1.093.39-1.988 1.029-2.688-.103-.253-.446-1.272.098-2.65 0 0 .84-.27 2.75 1.026A9.564 9.564 0 0112 6.844c.85.004 1.705.115 2.504.337 1.909-1.296 2.747-1.027 2.747-1.027.546 1.379.202 2.398.1 2.651.64.7 1.028 1.595 1.028 2.688 0 3.848-2.339 4.695-4.566 4.943.359.309.678.92.678 1.855 0 1.338-.012 2.419-.012 2.747 0 .268.18.58.688.482A10.019 10.019 0 0022 12.017C22 6.484 17.522 2 12 2z"
+                    clipRule="evenodd"
+                  />
+                </svg>
+                GitHub
+              </a>
+
+              <span className="text-muted-foreground/50">•</span>
+
+              <a
+                href="https://www.linkedin.com/in/aditya-rawat-3862182b0/"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="flex items-center gap-2 hover:text-primary transition-colors"
+              >
+                <svg
+                  className="h-5 w-5"
+                  fill="currentColor"
+                  viewBox="0 0 24 24"
+                  aria-hidden="true"
+                >
+                  <path d="M20.447 20.452h-3.554v-5.569c0-1.328-.027-3.037-1.852-3.037-1.853 0-2.136 1.445-2.136 2.939v5.667H9.351V9h3.414v1.561h.046c.477-.9 1.637-1.85 3.37-1.85 3.601 0 4.267 2.37 4.267 5.455v6.286zM5.337 7.433c-1.144 0-2.063-.926-2.063-2.065 0-1.138.92-2.063 2.063-2.063 1.14 0 2.064.925 2.064 2.063 0 1.139-.925 2.065-2.064 2.065zm1.782 13.019H3.555V9h3.564v11.452zM22.225 0H1.771C.792 0 0 .774 0 1.729v20.542C0 23.227.792 24 1.771 24h20.451C23.2 24 24 23.227 24 22.271V1.729C24 .774 23.2 0 22.222 0h.003z" />
+                </svg>
+                LinkedIn
+              </a>
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="flex h-screen flex-1 flex-col bg-card">
@@ -284,10 +306,10 @@ export function ChatView({ chat }: ChatViewProps) {
           </div>
         </div>
         <div className="flex items-center gap-4 text-muted-foreground">
-          <Video className="h-5 w-5" />
-          <Phone className="h-5 w-5" />
-          <Search className="h-5 w-5" />
-          <MoreVertical className="h-5 w-5" />
+          <Video className="h-5 w-5 cursor-pointer hover:text-foreground transition-colors" />
+          <Phone className="h-5 w-5 cursor-pointer hover:text-foreground transition-colors" />
+          <Search className="h-5 w-5 cursor-pointer hover:text-foreground transition-colors" />
+          <MoreVertical className="h-5 w-5 cursor-pointer hover:text-foreground transition-colors" />
         </div>
       </header>
 
@@ -305,10 +327,12 @@ export function ChatView({ chat }: ChatViewProps) {
         }}
         aria-label="Conversation"
       >
-        {/* Debug info (remove after fixing) */}
         {messages.length === 0 && (
-          <div className="text-center text-muted-foreground text-sm">
-            No messages yet. Messages count: {messages.length}
+          <div className="flex items-center justify-center h-full">
+            <div className="text-center text-muted-foreground text-sm bg-secondary/50 px-6 py-4 rounded-lg">
+              <MessageCircle className="h-12 w-12 mx-auto mb-3 opacity-50" />
+              <p>No messages yet. Start the conversation!</p>
+            </div>
           </div>
         )}
 
@@ -349,13 +373,12 @@ export function ChatView({ chat }: ChatViewProps) {
           </div>
         ))}
 
-        {/* Invisible div for auto-scroll target */}
         <div ref={messagesEndRef} />
       </main>
 
       {/* Composer */}
       <footer className="flex items-center gap-2 border-t bg-card px-4 py-3">
-        <button className="flex h-9 w-9 items-center justify-center rounded-full bg-secondary">
+        <button className="flex h-9 w-9 items-center justify-center rounded-full bg-secondary hover:bg-secondary/80 transition-colors">
           <Plus className="h-5 w-5 text-muted-foreground" />
         </button>
         <div className="flex flex-1 items-center gap-2 rounded-full border bg-secondary/60 px-3">
@@ -366,13 +389,13 @@ export function ChatView({ chat }: ChatViewProps) {
             onKeyDown={handleKeyPress}
             value={message}
             placeholder="Type a message"
-            className="flex-1 bg-transparent py-2 text-sm outline-none"
+            className="flex-1 bg-transparent py-2 text-sm outline-none placeholder:text-muted-foreground"
           />
         </div>
         <button
           onClick={handleSendMessage}
           disabled={isSending || !message.trim()}
-          className="flex h-9 w-9 items-center justify-center rounded-full bg-[color:var(--color-brand)] text-[color:var(--color-brand-foreground)] disabled:opacity-50"
+          className="flex h-9 w-9 items-center justify-center rounded-full bg-[color:var(--color-brand)] text-[color:var(--color-brand-foreground)] disabled:opacity-50 transition-all hover:scale-105 disabled:hover:scale-100"
         >
           {isSending ? (
             <Loader className="h-5 w-5 animate-spin" />

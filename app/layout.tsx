@@ -8,9 +8,9 @@ import { Suspense } from "react";
 import { Toaster } from "sonner";
 
 export const metadata: Metadata = {
-  title: "v0 App",
-  description: "Created with v0",
-  generator: "v0.app",
+  title: "What's App Clone - Aditya Rawat",
+  description: "What's App Clone. Nextjs Firebase",
+  generator: "Aditya",
 };
 
 export default function RootLayout({
