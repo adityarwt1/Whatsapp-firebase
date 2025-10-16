@@ -1,11 +1,19 @@
 import { database } from "@/lib/firebase";
-import { get, push, ref, set } from "firebase/database";
+import {
+  get,
+  orderByChild,
+  orderByValue,
+  push,
+  query,
+  ref,
+  set,
+} from "firebase/database";
 import { NextRequest, NextResponse } from "next/server";
 
 export async function POST(req: NextRequest) {
   try {
     const { uid, email, fullName, photoURL, currentUid } = await req.json();
-
+    console.log(photoURL);
     //validating request
     if (!uid || !email || !fullName || !photoURL || !currentUid) {
       return NextResponse.json({ error: "Badrequest" }, { status: 400 });
@@ -21,7 +29,6 @@ export async function POST(req: NextRequest) {
     const user = snapshot.val();
     const chatRef = ref(database, `/chats`);
     const newRef = push(chatRef);
-
     await set(newRef, {
       uid1: uid,
       uid2: user.uid,
@@ -31,6 +38,7 @@ export async function POST(req: NextRequest) {
       fullname2: user.fullName,
       photoURL1: photoURL,
       photoURL2: user.photoURL,
+      lastMessage: "Strat new Chat!",
     });
 
     return NextResponse.json({ success: true }, { status: 200 });
