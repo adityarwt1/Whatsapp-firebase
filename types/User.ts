@@ -10,6 +10,6 @@ export type ChatUser = {
   fullName: string;
   photoURL: string;
   uid: string;
-  lastmessage: string;
+  lastmessage?: string;
   unseen: number;
 };

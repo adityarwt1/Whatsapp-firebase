@@ -11,6 +11,20 @@ interface ChatListProps {
   onSelectChat: (chat: ChatUser) => void;
 }
 
+// Raw chat data from API
+interface RawChatData {
+  email1: string;
+  email2: string;
+  fullName1: string;
+  fullname2: string;
+  lastMessage: string;
+  photoURL1: string;
+  photoURL2: string;
+  uid1: string;
+  uid2: string;
+  chatId: string;
+}
+
 export function ChatList({ onSelectChat }: ChatListProps) {
   const [chats, setChats] = useState<ChatUser[]>([]);
   const [loading, setLoading] = useState(true);
@@ -32,7 +46,27 @@ export function ChatList({ onSelectChat }: ChatListProps) {
       try {
         const parsed = JSON.parse(event.data);
         if (parsed.chats) {
-          setChats(parsed.chats);
+          console.log(parsed.chats);
+
+          // Transform raw chat data to show opponent info
+          const transformedChats: ChatUser[] = parsed.chats.map(
+            (chat: RawChatData) => {
+              // Check if current user is uid1 or uid2
+              const isUser1 = chat.uid1 === uid;
+
+              // Return opponent's information
+              return {
+                uid: isUser1 ? chat.uid2 : chat.uid1,
+                fullName: isUser1 ? chat.fullname2 : chat.fullName1,
+                email: isUser1 ? chat.email2 : chat.email1,
+                photoURL: isUser1 ? chat.photoURL2 : chat.photoURL1,
+                lastmessage: chat.lastMessage,
+                chatId: chat.chatId,
+              };
+            }
+          );
+
+          setChats(transformedChats);
           setLoading(false);
         }
       } catch (error) {
