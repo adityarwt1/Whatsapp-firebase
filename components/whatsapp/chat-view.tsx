@@ -34,6 +34,7 @@ export function ChatView({ chat }: ChatViewProps) {
   const messagesEndRef = useRef<HTMLDivElement | null>(null);
   const scrollAreaRef = useRef<HTMLDivElement | null>(null);
   const fileInputRef = useRef<HTMLInputElement | null>(null);
+  const inputRef = useRef<HTMLInputElement | null>(null); // Added for input focus
   const [message, setMessage] = useState<string>("");
   const [isSending, setIsSending] = useState<boolean>(false);
   const [isAtBottom, setIsAtBottom] = useState<boolean>(true);
@@ -206,6 +207,10 @@ export function ChatView({ chat }: ChatViewProps) {
         if (response.ok) {
           setMessage("");
           setIsAtBottom(true);
+          // Refocus input after sending image
+          setTimeout(() => {
+            inputRef.current?.focus();
+          }, 0);
         }
       } catch (error) {
         console.error("Error sending image:", error);
@@ -274,6 +279,10 @@ export function ChatView({ chat }: ChatViewProps) {
       console.error("Send message error:", error);
     } finally {
       setIsSending(false);
+      // Refocus input after sending message
+      setTimeout(() => {
+        inputRef.current?.focus();
+      }, 0);
     }
   };
 
@@ -471,6 +480,7 @@ export function ChatView({ chat }: ChatViewProps) {
         </button>
         <div className="flex flex-1 items-center gap-2 rounded-full border bg-secondary/60 px-3">
           <input
+            ref={inputRef}
             disabled={isSending}
             aria-label="Type a message"
             onChange={(e) => setMessage(e.target.value)}
