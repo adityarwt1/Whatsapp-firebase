@@ -34,7 +34,7 @@ export function ChatView({ chat }: ChatViewProps) {
   const messagesEndRef = useRef<HTMLDivElement | null>(null);
   const scrollAreaRef = useRef<HTMLDivElement | null>(null);
   const fileInputRef = useRef<HTMLInputElement | null>(null);
-  const inputRef = useRef<HTMLInputElement | null>(null); // Added for input focus
+  const inputRef = useRef<HTMLInputElement | null>(null);
   const [message, setMessage] = useState<string>("");
   const [isSending, setIsSending] = useState<boolean>(false);
   const [isAtBottom, setIsAtBottom] = useState<boolean>(true);
@@ -310,6 +310,7 @@ export function ChatView({ chat }: ChatViewProps) {
     };
     deleteRead();
   }, [chat, currentUserUid]);
+
   // Show empty state when no chat is selected
   if (!chat) {
     return (
@@ -433,39 +434,54 @@ export function ChatView({ chat }: ChatViewProps) {
               {date}
             </div>
 
-            {/* Messages for this date */}
+            {/* Messages for this date - WhatsApp Style */}
             {groupedMessages[date].map((msg, msgIndex) => {
               const isCurrentUser = msg.uid === currentUserUid;
 
               return (
                 <div
                   key={msgIndex}
-                  className={`mb-3 flex ${
+                  className={`mb-1 flex ${
                     isCurrentUser ? "justify-end" : "justify-start"
                   }`}
                 >
                   <div
-                    className={`max-w-[60%] rounded-lg px-3 py-2 text-sm ${
+                    className={`relative max-w-[75%] rounded-lg px-3 py-2 shadow-sm ${
                       isCurrentUser
-                        ? "bg-[color:var(--color-brand)] text-[color:var(--color-brand-foreground)]"
-                        : "bg-secondary text-foreground"
+                        ? "bg-[#005C4B] text-white"
+                        : "bg-[#202C33] text-white"
                     }`}
                   >
                     {/* Render image if present */}
                     {msg.image && (
-                      <div className="mb-2">
+                      <div className="mb-1 -mx-1 -mt-1">
                         <img
                           src={msg.image}
                           alt="Shared image"
-                          className="rounded-md max-w-full h-auto max-h-96 object-contain"
+                          className="rounded-t-md max-w-full h-auto max-h-96 object-contain"
                         />
                       </div>
                     )}
 
-                    {/* Render message text */}
-                    {msg.message && <div>{msg.message}</div>}
+                    {/* Render message text with proper spacing for timestamp */}
+                    {msg.message && (
+                      <div
+                        className="pr-16 leading-relaxed text-[14.2px] break-words"
+                        style={{
+                          textShadow: "0 1px 0.5px rgba(0, 0, 0, 0.13)",
+                        }}
+                      >
+                        {msg.message}
+                      </div>
+                    )}
 
-                    <span className="ml-2 align-baseline text-[10px] opacity-80">
+                    {/* Time stamp positioned at bottom right */}
+                    <span
+                      className="absolute bottom-1 right-2 text-[11px] opacity-60 whitespace-nowrap flex items-center gap-1"
+                      style={{
+                        textShadow: "0 1px 0.5px rgba(0, 0, 0, 0.13)",
+                      }}
+                    >
                       {formatTime(msg.sendAt)}
                     </span>
                   </div>
