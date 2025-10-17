@@ -5,7 +5,8 @@ import { SearchInput } from "./search-input";
 import { useEffect, useState } from "react";
 import { ChatUser } from "@/types/User";
 
-const tabs = ["All", "Unread", "Favorites", "Groups"] as const;
+const tabs = ["All", "Unread"] as const;
+type Tab = (typeof tabs)[number];
 
 interface ChatListProps {
   onSelectChat: (chat: ChatUser) => void;
@@ -18,17 +19,70 @@ interface RawChatData {
   fullName1: string;
   fullname2: string;
   lastMessage: string;
+  lastInteraction?: number;
   photoURL1: string;
   photoURL2: string;
   uid1: string;
   uid2: string;
   chatId: string;
+  unread1?: number;
+  unread2?: number;
+}
+
+// Extended ChatUser type with unread count
+interface ExtendedChatUser extends ChatUser {
+  unreadCount: number;
+}
+
+// Format timestamp to WhatsApp-style (Today, Yesterday, or date)
+function formatTimestamp(timestamp?: number): string {
+  if (!timestamp) return "";
+
+  const now = new Date();
+  const messageDate = new Date(timestamp);
+
+  // Reset time to midnight for date comparison
+  const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+  const yesterday = new Date(today);
+  yesterday.setDate(yesterday.getDate() - 1);
+  const messageDay = new Date(
+    messageDate.getFullYear(),
+    messageDate.getMonth(),
+    messageDate.getDate()
+  );
+
+  // Check if today
+  if (messageDay.getTime() === today.getTime()) {
+    return "Today";
+  }
+
+  // Check if yesterday
+  if (messageDay.getTime() === yesterday.getTime()) {
+    return "Yesterday";
+  }
+
+  // Check if within current week
+  const weekAgo = new Date(today);
+  weekAgo.setDate(weekAgo.getDate() - 7);
+  if (messageDay > weekAgo) {
+    return messageDate.toLocaleDateString("en-US", { weekday: "long" });
+  }
+
+  // Otherwise show date
+  return messageDate.toLocaleDateString("en-US", {
+    month: "numeric",
+    day: "numeric",
+    year:
+      messageDate.getFullYear() !== now.getFullYear() ? "numeric" : undefined,
+  });
 }
 
 export function ChatList({ onSelectChat }: ChatListProps) {
-  const [chats, setChats] = useState<ChatUser[]>([]);
+  const [allChats, setAllChats] = useState<ExtendedChatUser[]>([]);
   const [loading, setLoading] = useState(true);
   const [uid, setUid] = useState<string | null>();
+  const [selectedChatId, setSelectedChatId] = useState<string | null>(null);
+  const [activeTab, setActiveTab] = useState<Tab>("All");
 
   useEffect(() => {
     if (typeof window !== "undefined") {
@@ -49,24 +103,26 @@ export function ChatList({ onSelectChat }: ChatListProps) {
           console.log(parsed.chats);
 
           // Transform raw chat data to show opponent info
-          const transformedChats: ChatUser[] = parsed.chats.map(
+          const transformedChats: ExtendedChatUser[] = parsed.chats.map(
             (chat: RawChatData) => {
               // Check if current user is uid1 or uid2
               const isUser1 = chat.uid1 === uid;
 
-              // Return opponent's information
+              // Return opponent's information with unread count
               return {
                 uid: isUser1 ? chat.uid2 : chat.uid1,
                 fullName: isUser1 ? chat.fullname2 : chat.fullName1,
                 email: isUser1 ? chat.email2 : chat.email1,
                 photoURL: isUser1 ? chat.photoURL2 : chat.photoURL1,
                 lastmessage: chat.lastMessage,
+                lastInteraction: chat.lastInteraction,
                 chatId: chat.chatId,
+                unreadCount: isUser1 ? chat.unread1 || 0 : chat.unread2 || 0,
               };
             }
           );
 
-          setChats(transformedChats);
+          setAllChats(transformedChats);
           setLoading(false);
         }
       } catch (error) {
@@ -85,6 +141,17 @@ export function ChatList({ onSelectChat }: ChatListProps) {
     };
   }, [uid]);
 
+  const handleChatSelect = (chat: ExtendedChatUser) => {
+    setSelectedChatId(chat.chatId);
+    onSelectChat(chat);
+  };
+
+  // Filter chats based on active tab
+  const filteredChats =
+    activeTab === "Unread"
+      ? allChats.filter((chat) => chat.unreadCount > 0)
+      : allChats;
+
   return (
     <div className="flex h-screen w-[360px] flex-col border-r bg-card">
       {/* Header */}
@@ -102,11 +169,12 @@ export function ChatList({ onSelectChat }: ChatListProps) {
         {tabs.map((t) => (
           <button
             key={t}
+            onClick={() => setActiveTab(t)}
             className={cn(
-              "rounded-full px-3 py-1 text-xs",
-              t === "All"
+              "rounded-full px-3 py-1 text-xs transition-colors",
+              t === activeTab
                 ? "bg-[color:var(--color-brand)] text-[color:var(--color-brand-foreground)]"
-                : "bg-secondary text-muted-foreground"
+                : "bg-secondary text-muted-foreground hover:bg-secondary/80"
             )}
           >
             {t}
@@ -120,32 +188,54 @@ export function ChatList({ onSelectChat }: ChatListProps) {
           <div className="text-center text-sm text-muted-foreground py-5">
             Loading chats...
           </div>
-        ) : chats.length === 0 ? (
+        ) : filteredChats.length === 0 ? (
           <div className="text-center text-sm text-muted-foreground py-5">
-            No chats found
+            {activeTab === "Unread" ? "No unread chats" : "No chats found"}
           </div>
         ) : (
-          chats.map((chat) => (
+          filteredChats.map((chat) => (
             <button
-              onClick={() => onSelectChat(chat)}
-              key={chat.uid}
-              className="flex cursor-pointer items-center gap-3 px-3 py-3 hover:bg-secondary/60 w-full"
+              onClick={() => handleChatSelect(chat)}
+              key={chat.chatId}
+              className={cn(
+                "flex cursor-pointer items-center gap-3 px-3 py-3 w-full transition-colors",
+                selectedChatId === chat.chatId
+                  ? "bg-secondary/80"
+                  : "hover:bg-secondary/50"
+              )}
             >
-              <Image
-                alt={chat.fullName}
-                src={chat.photoURL || "/placeholder.svg?height=40&width=40"}
-                width={40}
-                height={40}
-                className="rounded-full"
-              />
+              <div className="relative">
+                <Image
+                  alt={chat.fullName}
+                  src={chat.photoURL || "/placeholder.svg?height=40&width=40"}
+                  width={40}
+                  height={40}
+                  className="rounded-full"
+                />
+                {/* Green indicator for unread messages */}
+                {chat.unreadCount > 0 && (
+                  <div className="absolute -bottom-0.5 -right-0.5 w-3 h-3 bg-green-500 rounded-full border-2 border-card" />
+                )}
+              </div>
               <div className="min-w-0 flex-1">
-                <div className="flex items-center justify-between">
+                <div className="flex items-center justify-between gap-2">
                   <span className="truncate text-sm font-medium">
                     {chat.fullName}
                   </span>
+                  <span className="text-xs text-muted-foreground whitespace-nowrap">
+                    {formatTimestamp(chat.lastInteraction)}
+                  </span>
                 </div>
-                <div className="truncate text-xs text-muted-foreground text-left">
-                  {chat.lastmessage || "Start Chat"}
+                <div className="flex items-center justify-between gap-2">
+                  <div className="truncate text-xs text-muted-foreground text-left flex-1">
+                    {chat.lastmessage || "Start Chat"}
+                  </div>
+                  {/* Unread count badge */}
+                  {chat.unreadCount > 0 && (
+                    <div className="flex-shrink-0 min-w-[18px] h-[18px] flex items-center justify-center bg-green-500 text-white text-[11px] font-semibold rounded-full px-1.5">
+                      {chat.unreadCount > 99 ? "99+" : chat.unreadCount}
+                    </div>
+                  )}
                 </div>
               </div>
             </button>
@@ -154,7 +244,7 @@ export function ChatList({ onSelectChat }: ChatListProps) {
       </ul>
 
       {/* Footer */}
-      <div className="border-t px-3 py-2 text-xs text-muted-foreground">
+      <div className="border-t px-3 py-2 text-xs text-muted-foreground text-center">
         Your personal messages are end-to-end encrypted
       </div>
     </div>

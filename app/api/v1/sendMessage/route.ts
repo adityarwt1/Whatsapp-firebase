@@ -35,6 +35,7 @@ export async function POST(req: NextRequest) {
         { status: 200 }
       );
     }
+
     await set(messageRef, {
       message,
       sendAt: new Date().getTime(),

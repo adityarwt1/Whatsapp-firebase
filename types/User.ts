@@ -12,5 +12,6 @@ export type ChatUser = {
   uid: string;
   lastmessage?: string;
   unseen: number;
+  lastInteraction: number;
   chatId: string;
 };

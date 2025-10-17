@@ -70,7 +70,7 @@ export default function PageActiveChecker() {
           timeStam: active ? "online" : getLastSeenStatus(new Date().getTime()),
           uid,
         }),
-      }); 
+      });
     };
 
     handleVisibilityChange();
