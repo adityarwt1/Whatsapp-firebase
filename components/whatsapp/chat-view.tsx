@@ -6,17 +6,18 @@ import {
   Video,
   Search,
   MoreVertical,
-  Plus,
   Send,
   Loader,
   MessageCircle,
   Image as ImageIcon,
+  ArrowLeft,
 } from "lucide-react";
 import Image from "next/image";
 import { useEffect, useState, useRef } from "react";
 
 interface ChatViewProps {
   chat: ChatUser | null;
+  onBack?: () => void;
 }
 
 interface Message {
@@ -26,7 +27,7 @@ interface Message {
   image?: string;
 }
 
-export function ChatView({ chat }: ChatViewProps) {
+export function ChatView({ chat, onBack }: ChatViewProps) {
   const [currentUserUid, setCurrentUserUid] = useState<string | null>(null);
   const [messages, setMessages] = useState<Message[]>([]);
   const [online, setLastOnline] = useState();
@@ -39,14 +40,12 @@ export function ChatView({ chat }: ChatViewProps) {
   const [isSending, setIsSending] = useState<boolean>(false);
   const [isAtBottom, setIsAtBottom] = useState<boolean>(true);
 
-  // Auto-scroll to bottom when new messages arrive and user is at bottom
   useEffect(() => {
     if (isAtBottom && messagesEndRef.current) {
       messagesEndRef.current.scrollIntoView({ behavior: "smooth" });
     }
   }, [messages, isAtBottom]);
 
-  // Track if user is at bottom of chat
   const handleScroll = () => {
     if (!scrollAreaRef.current) return;
 
@@ -57,7 +56,6 @@ export function ChatView({ chat }: ChatViewProps) {
     setIsAtBottom(distanceFromBottom < threshold);
   };
 
-  // Get current user UID
   useEffect(() => {
     if (typeof window !== "undefined") {
       const uid = localStorage.getItem("uid");
@@ -65,14 +63,12 @@ export function ChatView({ chat }: ChatViewProps) {
     }
   }, []);
 
-  // Setup EventSource for real-time messages
   useEffect(() => {
     if (!currentUserUid || !chat?.chatId) {
       setMessages([]);
       return;
     }
 
-    // Close previous connection
     if (eventSourceRef.current) {
       eventSourceRef.current.close();
     }
@@ -127,9 +123,8 @@ export function ChatView({ chat }: ChatViewProps) {
       eventSource.close();
       userOnlineEventsource.close();
     };
-  }, [chat?.chatId, currentUserUid]);
+  }, [chat?.chatId, currentUserUid, chat?.uid]);
 
-  // Format timestamp to readable time
   const formatTime = (timestamp: number) => {
     const date = new Date(timestamp);
     const hours = date.getHours();
@@ -139,7 +134,6 @@ export function ChatView({ chat }: ChatViewProps) {
       .padStart(2, "0")}`;
   };
 
-  // Format date for date chip
   const formatDate = (timestamp: number) => {
     const date = new Date(timestamp);
     const today = new Date();
@@ -155,7 +149,6 @@ export function ChatView({ chat }: ChatViewProps) {
     return `${date.getDate()}/${date.getMonth() + 1}/${date.getFullYear()}`;
   };
 
-  // Group messages by date
   const groupMessagesByDate = () => {
     const grouped: { [key: string]: Message[] } = {};
 
@@ -172,7 +165,6 @@ export function ChatView({ chat }: ChatViewProps) {
 
   const groupedMessages = groupMessagesByDate();
 
-  // Convert file to base64
   const base64Format = async (file: File): Promise<string> => {
     return new Promise((resolve, reject) => {
       const reader = new FileReader();
@@ -182,7 +174,6 @@ export function ChatView({ chat }: ChatViewProps) {
     });
   };
 
-  // Handle image selection
   const handleImageSelect = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
 
@@ -207,7 +198,6 @@ export function ChatView({ chat }: ChatViewProps) {
         if (response.ok) {
           setMessage("");
           setIsAtBottom(true);
-          // Refocus input after sending image
           setTimeout(() => {
             inputRef.current?.focus();
           }, 0);
@@ -216,7 +206,6 @@ export function ChatView({ chat }: ChatViewProps) {
         console.error("Error sending image:", error);
       } finally {
         setIsSending(false);
-        // Reset file input
         if (fileInputRef.current) {
           fileInputRef.current.value = "";
         }
@@ -224,7 +213,6 @@ export function ChatView({ chat }: ChatViewProps) {
     }
   };
 
-  // Send message with optimistic UI update
   const handleSendMessage = async () => {
     if (!message.trim() || !currentUserUid || !chat?.chatId) return;
 
@@ -279,14 +267,12 @@ export function ChatView({ chat }: ChatViewProps) {
       console.error("Send message error:", error);
     } finally {
       setIsSending(false);
-      // Refocus input after sending message
       setTimeout(() => {
         inputRef.current?.focus();
       }, 0);
     }
   };
 
-  // Handle Enter key press
   const handleKeyPress = (e: React.KeyboardEvent<HTMLInputElement>) => {
     if (e.key === "Enter" && !e.shiftKey) {
       e.preventDefault();
@@ -311,7 +297,6 @@ export function ChatView({ chat }: ChatViewProps) {
     deleteRead();
   }, [chat, currentUserUid]);
 
-  // Show empty state when no chat is selected
   if (!chat) {
     return (
       <div className="flex h-screen flex-1 flex-col items-center justify-center bg-card">
@@ -380,8 +365,18 @@ export function ChatView({ chat }: ChatViewProps) {
     <div className="flex h-screen flex-1 flex-col bg-card">
       {/* Header */}
       <header className="flex items-center justify-between border-b px-4 py-3">
-        <div className="flex flex-col">
-          <div className="min-w-0 flex items-center">
+        <div className="flex items-center gap-3">
+          {/* Back button for mobile */}
+          {onBack && (
+            <button
+              onClick={onBack}
+              className="md:hidden flex items-center justify-center text-muted-foreground hover:text-foreground"
+            >
+              <ArrowLeft className="h-5 w-5" />
+            </button>
+          )}
+
+          <div className="flex items-center gap-2">
             <Image
               src={chat?.photoURL || "/backup.png"}
               alt="Profile"
@@ -389,16 +384,20 @@ export function ChatView({ chat }: ChatViewProps) {
               height={40}
               className="rounded-full"
             />
-            <div className="flex flex-col mx-2">
-              <div className="text-base font-medium">{chat?.fullName}</div>
+            <div className="flex flex-col">
+              <div className="text-sm md:text-base font-medium">
+                {chat?.fullName}
+              </div>
               <div className="text-xs text-muted-foreground">{online}</div>
             </div>
           </div>
         </div>
-        <div className="flex items-center gap-4 text-muted-foreground">
+        <div className="flex items-center gap-3 md:gap-4 text-muted-foreground">
           <Video className="h-5 w-5 cursor-pointer hover:text-foreground transition-colors" />
           <Phone className="h-5 w-5 cursor-pointer hover:text-foreground transition-colors" />
-          <Search className="h-5 w-5 cursor-pointer hover:text-foreground transition-colors" />
+          <div className="hidden md:block">
+            <Search className="h-5 w-5 cursor-pointer hover:text-foreground transition-colors" />
+          </div>
           <MoreVertical className="h-5 w-5 cursor-pointer hover:text-foreground transition-colors" />
         </div>
       </header>
@@ -407,7 +406,7 @@ export function ChatView({ chat }: ChatViewProps) {
       <main
         ref={scrollAreaRef}
         onScroll={handleScroll}
-        className="relative flex-1 overflow-y-auto p-6"
+        className="relative flex-1 overflow-y-auto p-4 md:p-6"
         style={{
           backgroundImage:
             "linear-gradient(rgba(0,0,0,0.8), rgba(0,0,0,0.8)), url('/images/whatsapp-chat-bg.png')",
@@ -446,7 +445,7 @@ export function ChatView({ chat }: ChatViewProps) {
                   }`}
                 >
                   <div
-                    className={`relative max-w-[75%] rounded-lg px-3 py-2 shadow-sm ${
+                    className={`relative max-w-[85%] md:max-w-[75%] rounded-lg px-3 py-2 shadow-sm ${
                       isCurrentUser
                         ? "bg-[#005C4B] text-white"
                         : "bg-[#202C33] text-white"
@@ -495,7 +494,7 @@ export function ChatView({ chat }: ChatViewProps) {
       </main>
 
       {/* Composer */}
-      <footer className="flex items-center gap-2 border-t bg-card px-4 py-3">
+      <footer className="flex items-center gap-2 border-t bg-card px-3 md:px-4 py-2 md:py-3">
         <input
           ref={fileInputRef}
           type="file"
@@ -530,7 +529,7 @@ export function ChatView({ chat }: ChatViewProps) {
           {isSending ? (
             <Loader className="h-5 w-5 animate-spin" />
           ) : (
-            <Send className="h-5 w-5" />
+            <Send className="h-5 w-5 text-white" />
           )}
         </button>
       </footer>

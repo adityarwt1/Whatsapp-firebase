@@ -12,7 +12,6 @@ interface ChatListProps {
   onSelectChat: (chat: ChatUser) => void;
 }
 
-// Raw chat data from API
 interface RawChatData {
   email1: string;
   email2: string;
@@ -29,19 +28,16 @@ interface RawChatData {
   unread2?: number;
 }
 
-// Extended ChatUser type with unread count
 interface ExtendedChatUser extends ChatUser {
   unreadCount: number;
 }
 
-// Format timestamp to WhatsApp-style (Today, Yesterday, or date)
 function formatTimestamp(timestamp?: number): string {
   if (!timestamp) return "";
 
   const now = new Date();
   const messageDate = new Date(timestamp);
 
-  // Reset time to midnight for date comparison
   const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
   const yesterday = new Date(today);
   yesterday.setDate(yesterday.getDate() - 1);
@@ -51,24 +47,20 @@ function formatTimestamp(timestamp?: number): string {
     messageDate.getDate()
   );
 
-  // Check if today
   if (messageDay.getTime() === today.getTime()) {
     return "Today";
   }
 
-  // Check if yesterday
   if (messageDay.getTime() === yesterday.getTime()) {
     return "Yesterday";
   }
 
-  // Check if within current week
   const weekAgo = new Date(today);
   weekAgo.setDate(weekAgo.getDate() - 7);
   if (messageDay > weekAgo) {
     return messageDate.toLocaleDateString("en-US", { weekday: "long" });
   }
 
-  // Otherwise show date
   return messageDate.toLocaleDateString("en-US", {
     month: "numeric",
     day: "numeric",
@@ -100,15 +92,10 @@ export function ChatList({ onSelectChat }: ChatListProps) {
       try {
         const parsed = JSON.parse(event.data);
         if (parsed.chats) {
-          console.log(parsed.chats);
-
-          // Transform raw chat data to show opponent info
           const transformedChats: ExtendedChatUser[] = parsed.chats.map(
             (chat: RawChatData) => {
-              // Check if current user is uid1 or uid2
               const isUser1 = chat.uid1 === uid;
 
-              // Return opponent's information with unread count
               return {
                 uid: isUser1 ? chat.uid2 : chat.uid1,
                 fullName: isUser1 ? chat.fullname2 : chat.fullName1,
@@ -157,14 +144,13 @@ export function ChatList({ onSelectChat }: ChatListProps) {
     }
   };
 
-  // Filter chats based on active tab
   const filteredChats =
     activeTab === "Unread"
       ? allChats.filter((chat) => chat.unreadCount > 0)
       : allChats;
 
   return (
-    <div className="flex h-screen w-[360px] flex-col border-r bg-card">
+    <div className="flex h-screen w-full md:w-[360px] flex-col border-r bg-card">
       {/* Header */}
       <header className="flex items-center gap-3 px-4 py-3">
         <div className="text-xl font-semibold">WhatsApp</div>
@@ -223,7 +209,6 @@ export function ChatList({ onSelectChat }: ChatListProps) {
                   height={40}
                   className="rounded-full"
                 />
-                {/* Green indicator for unread messages */}
                 {chat.unreadCount > 0 && (
                   <div className="absolute -bottom-0.5 -right-0.5 w-3 h-3 bg-green-500 rounded-full border-2 border-card" />
                 )}
@@ -241,7 +226,6 @@ export function ChatList({ onSelectChat }: ChatListProps) {
                   <div className="truncate text-xs text-muted-foreground text-left flex-1">
                     {chat.lastmessage || "Start Chat"}
                   </div>
-                  {/* Unread count badge */}
                   {chat.unreadCount > 0 && (
                     <div className="flex-shrink-0 min-w-[18px] h-[18px] flex items-center justify-center bg-green-500 text-white text-[11px] font-semibold rounded-full px-1.5">
                       {chat.unreadCount > 99 ? "99+" : chat.unreadCount}
