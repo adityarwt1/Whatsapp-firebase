@@ -363,6 +363,33 @@ export function ChatView({ chat, onBack }: ChatViewProps) {
 
   return (
     <div className="flex h-screen flex-1 flex-col bg-card">
+      {/* Custom Scrollbar Styles */}
+      <style jsx global>{`
+        /* Custom scrollbar for chat area */
+        .custom-scrollbar::-webkit-scrollbar {
+          width: 6px;
+        }
+
+        .custom-scrollbar::-webkit-scrollbar-track {
+          background: transparent;
+        }
+
+        .custom-scrollbar::-webkit-scrollbar-thumb {
+          background-color: rgba(255, 255, 255, 0.16);
+          border-radius: 3px;
+        }
+
+        .custom-scrollbar::-webkit-scrollbar-thumb:hover {
+          background-color: rgba(255, 255, 255, 0.24);
+        }
+
+        /* Firefox scrollbar */
+        .custom-scrollbar {
+          scrollbar-width: thin;
+          scrollbar-color: rgba(255, 255, 255, 0.16) transparent;
+        }
+      `}</style>
+
       {/* Header */}
       <header className="flex items-center justify-between border-b px-4 py-3">
         <div className="flex items-center gap-3">
@@ -402,11 +429,11 @@ export function ChatView({ chat, onBack }: ChatViewProps) {
         </div>
       </header>
 
-      {/* Messages area */}
+      {/* Messages area with custom scrollbar */}
       <main
         ref={scrollAreaRef}
         onScroll={handleScroll}
-        className="relative flex-1 overflow-y-auto p-4 md:p-6"
+        className="relative flex-1 overflow-y-auto p-4 md:p-6 custom-scrollbar"
         style={{
           backgroundImage:
             "linear-gradient(rgba(0,0,0,0.8), rgba(0,0,0,0.8)), url('/images/whatsapp-chat-bg.png')",
