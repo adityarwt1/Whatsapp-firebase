@@ -19,7 +19,6 @@ export default function PageActiveChecker() {
 
     const handleVisibilityChange = async () => {
       const active = !document.hidden;
-      console.log(active ? "🟢 Window is Active" : "🔴 Window is Inactive");
 
       await fetch("/api/v1/setLastOnline", {
         method: "POST",

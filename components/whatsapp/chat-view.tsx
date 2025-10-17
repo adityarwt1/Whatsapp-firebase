@@ -13,6 +13,7 @@ import {
 } from "lucide-react";
 import Image from "next/image";
 import { useEffect, useState, useRef } from "react";
+import { toast } from "sonner";
 
 interface ChatViewProps {
   chat: ChatUser | null;
@@ -25,10 +26,9 @@ interface Message {
 }
 
 export function ChatView({ chat }: ChatViewProps) {
-  console.log(chat);
   const [currentUserUid, setCurrentUserUid] = useState<string | null>(null);
   const [messages, setMessages] = useState<Message[]>([]);
-
+  const [online, setLastOnline] = useState();
   const eventSourceRef = useRef<EventSource | null>(null);
   const messagesEndRef = useRef<HTMLDivElement | null>(null);
   const scrollAreaRef = useRef<HTMLDivElement | null>(null);
@@ -107,8 +107,23 @@ export function ChatView({ chat }: ChatViewProps) {
       eventSource.close();
     };
 
+    const userOnlineEventsource = new EventSource(
+      `/api/v1/getUserInfo?uid=${chat.uid}`
+    );
+
+    userOnlineEventsource.onmessage = (event) => {
+      const parsed = JSON.parse(event.data);
+
+      if (parsed.user) {
+        setLastOnline(parsed.user.lastOnline);
+      }
+    };
+    userOnlineEventsource.onerror = (error) => {
+      console.log(error);
+    };
     return () => {
       eventSource.close();
+      userOnlineEventsource.close();
     };
   }, [chat?.chatId, currentUserUid]);
 
@@ -300,9 +315,7 @@ export function ChatView({ chat }: ChatViewProps) {
             />
             <div className="flex flex-col mx-2">
               <div className="text-base font-medium">{chat?.fullName}</div>
-              <div className="text-xs text-muted-foreground">
-                last seen today at 18:21
-              </div>
+              <div className="text-xs text-muted-foreground">{online}</div>
             </div>
           </div>
         </div>
