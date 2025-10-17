@@ -7,10 +7,14 @@ import "./globals.css";
 import { Suspense } from "react";
 import { Toaster } from "sonner";
 import IsOnline from "@/components/IsOnline";
+
 export const metadata: Metadata = {
   title: "What's App Clone - Aditya Rawat",
   description: "What's App Clone. Nextjs Firebase",
   generator: "Aditya",
+  icons: {
+    icon: "/favicon.png",
+  },
 };
 
 export default function RootLayout({
