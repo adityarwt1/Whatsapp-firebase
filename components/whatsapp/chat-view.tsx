@@ -294,6 +294,22 @@ export function ChatView({ chat }: ChatViewProps) {
     }
   };
 
+  useEffect(() => {
+    const deleteRead = async () => {
+      try {
+        await fetch(`/api/v1/delteUnread`, {
+          method: "DELETE",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({ chatId: chat?.chatId, uid: currentUserUid }),
+        });
+      } catch (error) {
+        console.log((error as Error).message);
+      }
+    };
+    deleteRead();
+  }, [chat, currentUserUid]);
   // Show empty state when no chat is selected
   if (!chat) {
     return (

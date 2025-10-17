@@ -141,9 +141,20 @@ export function ChatList({ onSelectChat }: ChatListProps) {
     };
   }, [uid]);
 
-  const handleChatSelect = (chat: ExtendedChatUser) => {
+  const handleChatSelect = async (chat: ExtendedChatUser) => {
     setSelectedChatId(chat.chatId);
     onSelectChat(chat);
+    try {
+      await fetch(`/api/v1/delteUnread`, {
+        method: "DELETE",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ chatId: chat.chatId, uid: uid }),
+      });
+    } catch (error) {
+      console.log((error as Error).message);
+    }
   };
 
   // Filter chats based on active tab

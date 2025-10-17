@@ -25,12 +25,12 @@ export async function DELETE(req: NextRequest) {
 
     if (data.uid1 == uid) {
       await update(chatRef, {
-        unread2: 0,
+        unread1: 0,
       });
       return NextResponse.json({ message: "Unread cleared" }, { status: 200 });
     }
     await update(chatRef, {
-      unread1: 0,
+      unread2: 0,
     });
     return NextResponse.json({ message: "Unread cleared" }, { status: 200 });
   } catch (error) {
