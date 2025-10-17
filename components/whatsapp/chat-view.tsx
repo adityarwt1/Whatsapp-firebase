@@ -10,10 +10,10 @@ import {
   Send,
   Loader,
   MessageCircle,
+  Image as ImageIcon,
 } from "lucide-react";
 import Image from "next/image";
 import { useEffect, useState, useRef } from "react";
-import { toast } from "sonner";
 
 interface ChatViewProps {
   chat: ChatUser | null;
@@ -23,6 +23,7 @@ interface Message {
   message: string;
   sendAt: number;
   uid: string;
+  image?: string;
 }
 
 export function ChatView({ chat }: ChatViewProps) {
@@ -32,6 +33,7 @@ export function ChatView({ chat }: ChatViewProps) {
   const eventSourceRef = useRef<EventSource | null>(null);
   const messagesEndRef = useRef<HTMLDivElement | null>(null);
   const scrollAreaRef = useRef<HTMLDivElement | null>(null);
+  const fileInputRef = useRef<HTMLInputElement | null>(null);
   const [message, setMessage] = useState<string>("");
   const [isSending, setIsSending] = useState<boolean>(false);
   const [isAtBottom, setIsAtBottom] = useState<boolean>(true);
@@ -82,7 +84,6 @@ export function ChatView({ chat }: ChatViewProps) {
     eventSource.onmessage = (event) => {
       try {
         const parsedData = JSON.parse(event.data);
-
         if (Array.isArray(parsedData)) {
           const sortedMessages = parsedData.sort(
             (a: Message, b: Message) => a.sendAt - b.sendAt
@@ -170,6 +171,54 @@ export function ChatView({ chat }: ChatViewProps) {
 
   const groupedMessages = groupMessagesByDate();
 
+  // Convert file to base64
+  const base64Format = async (file: File): Promise<string> => {
+    return new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onload = () => resolve(reader.result as string);
+      reader.onerror = (e) => reject(e);
+      reader.readAsDataURL(file);
+    });
+  };
+
+  // Handle image selection
+  const handleImageSelect = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+
+    if (file && currentUserUid && chat?.chatId) {
+      try {
+        setIsSending(true);
+        const base64Image = await base64Format(file);
+
+        const response = await fetch("/api/v1/sendMessage", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            uid: currentUserUid,
+            chatId: chat.chatId,
+            image: base64Image,
+            imageText: message.trim() || "Image",
+          }),
+        });
+
+        if (response.ok) {
+          setMessage("");
+          setIsAtBottom(true);
+        }
+      } catch (error) {
+        console.error("Error sending image:", error);
+      } finally {
+        setIsSending(false);
+        // Reset file input
+        if (fileInputRef.current) {
+          fileInputRef.current.value = "";
+        }
+      }
+    }
+  };
+
   // Send message with optimistic UI update
   const handleSendMessage = async () => {
     if (!message.trim() || !currentUserUid || !chat?.chatId) return;
@@ -209,6 +258,7 @@ export function ChatView({ chat }: ChatViewProps) {
               )
           )
         );
+
         console.error("Failed to send message");
       }
     } catch (error) {
@@ -331,7 +381,7 @@ export function ChatView({ chat }: ChatViewProps) {
       <main
         ref={scrollAreaRef}
         onScroll={handleScroll}
-        className="relative flex-1 overflow-y-auto p-6 "
+        className="relative flex-1 overflow-y-auto p-6"
         style={{
           backgroundImage:
             "linear-gradient(rgba(0,0,0,0.8), rgba(0,0,0,0.8)), url('/images/whatsapp-chat-bg.png')",
@@ -376,7 +426,20 @@ export function ChatView({ chat }: ChatViewProps) {
                         : "bg-secondary text-foreground"
                     }`}
                   >
-                    {msg.message}
+                    {/* Render image if present */}
+                    {msg.image && (
+                      <div className="mb-2">
+                        <img
+                          src={msg.image}
+                          alt="Shared image"
+                          className="rounded-md max-w-full h-auto max-h-96 object-contain"
+                        />
+                      </div>
+                    )}
+
+                    {/* Render message text */}
+                    {msg.message && <div>{msg.message}</div>}
+
                     <span className="ml-2 align-baseline text-[10px] opacity-80">
                       {formatTime(msg.sendAt)}
                     </span>
@@ -392,8 +455,19 @@ export function ChatView({ chat }: ChatViewProps) {
 
       {/* Composer */}
       <footer className="flex items-center gap-2 border-t bg-card px-4 py-3">
-        <button className="flex h-9 w-9 items-center justify-center rounded-full bg-secondary hover:bg-secondary/80 transition-colors">
-          <Plus className="h-5 w-5 text-muted-foreground" />
+        <input
+          ref={fileInputRef}
+          type="file"
+          accept="image/*"
+          onChange={handleImageSelect}
+          className="hidden"
+        />
+        <button
+          onClick={() => fileInputRef.current?.click()}
+          disabled={isSending}
+          className="flex h-9 w-9 items-center justify-center rounded-full bg-secondary hover:bg-secondary/80 transition-colors disabled:opacity-50"
+        >
+          <ImageIcon className="h-5 w-5 text-muted-foreground" />
         </button>
         <div className="flex flex-1 items-center gap-2 rounded-full border bg-secondary/60 px-3">
           <input

@@ -7,7 +7,7 @@ export async function POST(req: NextRequest) {
     const { chatId, message, uid, image, imageText } = await req.json();
 
     //validating id
-    if (!chatId || !message || !uid) {
+    if (!chatId || !uid) {
       return NextResponse.json({ error: "Bad request" }, { status: 400 });
     }
 
