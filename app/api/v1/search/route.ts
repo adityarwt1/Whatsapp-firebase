@@ -1,4 +1,6 @@
 import { database } from "@/lib/firebase";
+import { connnectdb } from "@/lib/mongodb";
+import UserModel from "@/models/User";
 import { equalTo, get, orderByChild, query, ref } from "firebase/database";
 import { NextRequest, NextResponse } from "next/server";
 
@@ -13,6 +15,23 @@ export async function POST(req: NextRequest) {
       );
     }
 
+    const query = email;
+
+    const filter: any = {};
+
+    if (email) {
+      filter.$or = [
+        { fullName: { $regex: query, $options: "i" } },
+        { email: { $regex: query, $options: "i" } },
+      ];
+    }
+
+    await connnectdb();
+    const userRes = await UserModel.findOne(filter);
+
+    if (userRes) {
+      return NextResponse.json({ user: userRes }, { status: 200 });
+    }
     const dbref = ref(database, "/users");
     const searchQuery = query(dbref, orderByChild("email"), equalTo(email));
 

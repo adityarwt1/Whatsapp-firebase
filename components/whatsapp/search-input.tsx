@@ -93,7 +93,7 @@ export function SearchInput(props: { placeholder?: string }) {
               className="h-8 w-8 rounded-full object-cover"
             />
             <div>
-              <div className="font-semibold">{user.fullName}</div>
+              <div className="font-semibold text-left">{user.fullName}</div>
               <div className="text-xs text-muted-foreground">{user.email}</div>
             </div>
           </div>
