@@ -25,6 +25,7 @@ interface Message {
 }
 
 export function ChatView({ chat }: ChatViewProps) {
+  console.log(chat);
   const [currentUserUid, setCurrentUserUid] = useState<string | null>(null);
   const [messages, setMessages] = useState<Message[]>([]);
 
@@ -317,7 +318,7 @@ export function ChatView({ chat }: ChatViewProps) {
       <main
         ref={scrollAreaRef}
         onScroll={handleScroll}
-        className="relative flex-1 overflow-y-auto p-6"
+        className="relative flex-1 overflow-y-auto p-6 "
         style={{
           backgroundImage:
             "linear-gradient(rgba(0,0,0,0.8), rgba(0,0,0,0.8)), url('/images/whatsapp-chat-bg.png')",

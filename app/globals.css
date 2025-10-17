@@ -155,3 +155,10 @@
   background: #222 !important;
   color: #fff !important;
 }
+
+::-webkit-scrollbar-track {
+  background: #000;
+}
+::-webkit-scrollbar-thumb {
+  background: #fff;
+}
