@@ -234,7 +234,7 @@ export function ChatView({ chat, onBack }: ChatViewProps) {
       seenAt.toLocaleDateString() <
       new Date(today.getTime() + 7).toLocaleDateString()
     ) {
-      return `last seen this week in ${seenAt.getDay()}`;
+      return `last seen this week in ${days[seenAt.getDay()]}`;
     } else {
       return `last seen ${seenAt.toLocaleDateString()}`;
     }

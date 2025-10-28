@@ -1,7 +1,7 @@
 import { cookies } from "next/headers";
-import { NextRequest, NextResponse } from "next/server";
+import { NextRequest, NextResponse, ProxyConfig } from "next/server";
 
-export async function middleware(req: NextRequest) {
+export async function proxy(req: NextRequest) {
   const token = (await cookies()).get("whatsappfirebase")?.value;
 
   const response = await fetch(`${req.nextUrl.origin}/api/v1/verify`);
@@ -13,6 +13,6 @@ export async function middleware(req: NextRequest) {
   return NextResponse.next();
 }
 
-export const config = {
+export const config: ProxyConfig = {
   matcher: ["/"],
 };
