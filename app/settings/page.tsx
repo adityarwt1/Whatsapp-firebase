@@ -12,6 +12,7 @@ import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
 import { get, ref } from "firebase/database";
 import { database } from "@/lib/firebase";
+import Logout from "@/components/Logout";
 export default async function SettingsPage() {
   const token = (await cookies()).get("whatsappfirebase")?.value as string;
   if (!token) {
@@ -49,10 +50,7 @@ export default async function SettingsPage() {
             </div>
           </li>
 
-          <li className="flex items-center gap-3 px-4 py-3 text-red-500">
-            <LogOut className="h-4 w-4" />
-            <div className="text-sm">Log out</div>
-          </li>
+          <Logout />
         </ul>
       </div>
       <div className="flex h-screen flex-1 items-center justify-center">

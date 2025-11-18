@@ -5,6 +5,7 @@ import { Pencil, Phone, Camera, ArrowLeft } from "lucide-react";
 import { useEffect, useState, useRef } from "react";
 import Image from "next/image";
 import { useRouter } from "next/navigation";
+import { toast } from "sonner";
 
 export default function ProfilePage() {
   const [uid, setUid] = useState<string | null>(null);
@@ -141,7 +142,7 @@ export default function ProfilePage() {
     try {
       setUploading(true);
       const base64Image = await base64Format(file);
-
+      toast.message("Updating dp....");
       const response = await fetch("/api/v1/updateProfile", {
         method: "PUT",
         headers: {
@@ -154,6 +155,7 @@ export default function ProfilePage() {
       });
 
       if (response.ok) {
+        toast.message("DP updated successfully!");
         setUserData((prev) =>
           prev ? { ...prev, photoURL: base64Image } : null
         );
