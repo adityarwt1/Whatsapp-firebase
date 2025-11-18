@@ -1,7 +1,35 @@
-import { SideNav } from "@/components/whatsapp/side-nav"
-import { Bell, Lock, MessageSquare, Keyboard, HelpCircle, LogOut } from "lucide-react"
+import { SideNav } from "@/components/whatsapp/side-nav";
+import {
+  Bell,
+  Lock,
+  MessageSquare,
+  Keyboard,
+  HelpCircle,
+  LogOut,
+} from "lucide-react";
+import jwt from "jsonwebtoken";
+import { cookies } from "next/headers";
+import { redirect } from "next/navigation";
+import { get, ref } from "firebase/database";
+import { database } from "@/lib/firebase";
+export default async function SettingsPage() {
+  const token = (await cookies()).get("whatsappfirebase")?.value as string;
+  if (!token) {
+    return redirect("/login");
+  }
+  const decoded = jwt.verify(token, process.env.JWT_SECRET as string) as {
+    uid: string;
+  };
 
-export default function SettingsPage() {
+  const databaseRef = ref(database, `/users/${decoded.uid}`);
+
+  const snapshot = await get(databaseRef);
+  const user = snapshot.val();
+
+  if (!user) {
+    return redirect("/login");
+  }
+
   return (
     <main className="flex">
       <SideNav />
@@ -9,32 +37,18 @@ export default function SettingsPage() {
         <header className="px-4 py-4 text-lg font-semibold">Settings</header>
         <ul className="divide-y">
           <li className="flex items-center gap-3 px-4 py-3">
-            <div className="h-10 w-10 rounded-full bg-secondary" />
+            <img
+              src={user.photoURL}
+              className="h-10 w-10 rounded-full bg-secondary"
+              alt="dp"
+            />
+            <div />
             <div>
-              <div className="text-sm font-medium">Your Name</div>
-              <div className="text-xs text-muted-foreground">Hey there! I am using WhatsApp.</div>
+              <div className="text-sm font-medium">{user.fullName}</div>
+              <div className="text-xs text-muted-foreground">{user.about}</div>
             </div>
           </li>
-          <li className="flex items-center gap-3 px-4 py-3">
-            <Lock className="h-4 w-4 text-muted-foreground" />
-            <div className="text-sm">Privacy</div>
-          </li>
-          <li className="flex items-center gap-3 px-4 py-3">
-            <MessageSquare className="h-4 w-4 text-muted-foreground" />
-            <div className="text-sm">Chats</div>
-          </li>
-          <li className="flex items-center gap-3 px-4 py-3">
-            <Bell className="h-4 w-4 text-muted-foreground" />
-            <div className="text-sm">Notifications</div>
-          </li>
-          <li className="flex items-center gap-3 px-4 py-3">
-            <Keyboard className="h-4 w-4 text-muted-foreground" />
-            <div className="text-sm">Keyboard shortcuts</div>
-          </li>
-          <li className="flex items-center gap-3 px-4 py-3">
-            <HelpCircle className="h-4 w-4 text-muted-foreground" />
-            <div className="text-sm">Help</div>
-          </li>
+
           <li className="flex items-center gap-3 px-4 py-3 text-red-500">
             <LogOut className="h-4 w-4" />
             <div className="text-sm">Log out</div>
@@ -48,5 +62,5 @@ export default function SettingsPage() {
         </div>
       </div>
     </main>
-  )
+  );
 }

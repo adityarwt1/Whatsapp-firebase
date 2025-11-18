@@ -547,7 +547,7 @@ export function ChatView({ chat, onBack }: ChatViewProps) {
       </main>
 
       {/* Composer */}
-      <footer className="flex items-center gap-2 border-t bg-card px-3 md:px-4 py-2 md:py-3">
+      <footer className="flex items-center gap-2 border-t bg-card px-3 md:px-4 py-2 md:py-3 ">
         <input
           ref={fileInputRef}
           type="file"

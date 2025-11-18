@@ -19,27 +19,21 @@ export async function POST(req: NextRequest) {
       issuer: "Aditya Rawat",
       expiresIn: 7 * 24 * 60 * 60 * 100,
     });
-    (await cookies()).set("whatsappfirebase", token, {
-      httpOnly: true,
-      secure: process.env.NODE_ENV === "production",
-      sameSite: "lax",
-      path: "/",
-      maxAge: 7 * 24 * 60 * 60,
-    });
+    console.log("token", token);
+    (await cookies()).set("whatsappfirebase", token);
 
     await connnectdb();
 
     const user = await UserModel.findOne({ email });
 
     if (!user) {
-      const saveUser = new UserModel({
+      const saveUser = await UserModel.insertOne({
         email,
         photoURL,
         uid,
         fullName,
         createdAt: new Date().getTime(),
       });
-      await saveUser.save();
     }
     const dbREf = ref(database, `/users/${uid}`);
     const snapshot = await get(dbREf);
@@ -53,6 +47,7 @@ export async function POST(req: NextRequest) {
         createdAt: serverTimestamp(),
       });
     }
+
     return NextResponse.json(
       { message: "Login Successfully" },
       { status: 200 }
