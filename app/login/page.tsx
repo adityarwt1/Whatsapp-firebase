@@ -50,7 +50,7 @@ export default function LoginGooglePage() {
   };
 
   return (
-    <main className="mx-auto flex min-h-screen max-w-4xl flex-col gap-6 px-6 py-10">
+    <main className="mx-auto flex min-h-screen max-w-4xl flex-col gap-6 px-6 py-10 ">
       {/* WhatsApp Logo & Title */}
       <div className="flex flex-col items-center justify-center mb-6">
         <div className="mb-4 rounded-full bg-[color:var(--color-brand)]/10 p-6">
