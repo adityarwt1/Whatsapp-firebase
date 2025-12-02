@@ -9,3 +9,9 @@
 # Authentication
 
 <img src="./public/readme/Authentication.png" width={400} hight={400}/>
+
+> I used firebase authenction for the Google Authentication.
+
+# Chat Section
+
+<img src="./public/readme/chatsection.png" width={400} height={400} />
