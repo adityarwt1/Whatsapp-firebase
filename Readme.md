@@ -15,3 +15,5 @@
 # Chat Section
 
 <img src="./public/readme/chatsection.png" width={400} height={400} />
+
+> Chat latency less than ~200ms.
